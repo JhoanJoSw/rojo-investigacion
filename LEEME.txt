@@ -1,0 +1,128 @@
+RECOLECTOR DE TITULARES "ROJO" — APOYO A LA INVESTIGACIÓN LINGÜÍSTICA
+=====================================================================
+
+QUÉ HACE
+--------
+Aplicativo web local para recopilar titulares de prensa digital peruana que
+contienen la palabra "rojo" (y sus variantes), y capturarlos como imagen:
+
+  1. BÚSQUEDA DE TITULARES
+     Busca "rojo" en el buscador interno del periódico, filtra para que la
+     palabra aparezca en el TITULAR, respeta el rango de fechas elegido y
+     permite descargar los resultados en CSV (medio, fecha, sección, titular,
+     bajada, URL, autor, etiquetas).
+
+  2. CAPTURA WEB
+     Abre cada noticia y guarda una imagen con el logotipo del periódico,
+     la sección y el titular, tal como se publicó en la web.
+
+  3. CAPTURA DE LA EDICIÓN IMPRESA (La Razón y La República)
+     Descarga el PDF del diario en papel de cada fecha dentro del rango
+     elegido (por defecto los últimos 3 años = 1.097 días), localiza dónde
+     aparece la palabra, guarda la página como imagen y la marca con un
+     recuadro rojo alrededor de la palabra.
+     - Se procesa POR TANDAS (15, 30 o 60 días por pulsación), con
+       "Continuar hasta terminar el rango" para que trabaje solo.
+     - El avance se guarda: se puede parar cuando se quiera y al volver a
+       pulsar CONTINÚA donde quedó, sin repetir días.
+     - Modo por defecto: SOLO LA PORTADA (página 1). También se puede
+       elegir "Todas las páginas con la palabra" (al cambiar de modo se
+       repasan los días que falten en el nuevo modo).
+
+  4. ENTREGA
+     - ZIP con todas las imágenes + fichas.csv
+     - Informe PDF: una página por captura con su ficha (medio, fecha,
+       página, palabra, titular y fuente)
+
+CÓMO SE USA
+-----------
+1. Doble clic en  INICIAR.bat   (o en una terminal:  python app.py)
+2. Abrir en el navegador:  http://127.0.0.1:8000
+3. Elegir medio, fechas y palabra → "Buscar titulares"
+   (las fechas vienen puestas por defecto a los ÚLTIMOS 3 AÑOS)
+4. Panel de capturas:
+   - "Capturar páginas web" (hasta 25/50/100/200 noticias)
+   - "▶ Procesar tanda (edición impresa)" → elige "Solo la portada"
+     o "Todas las páginas", tamaño de tanda y, si quieres que trabaje
+     solo, marca "Continuar hasta terminar el rango".
+     La línea "Edición impresa: revisados X de Y días" muestra el avance;
+     puedes parar o cerrar la página cuando quieras: al volver a pulsar,
+     CONTINÚA donde quedó sin repetir días ("Reiniciar avance" solo sirve
+     para volver a empezar el recorrido desde cero).
+5. Descargar ZIP o informe PDF
+
+ENTREGA / USO EN OTRA PC
+------------------------
+Este paquete está pensado para ejecutarse en local (127.0.0.1:8000):
+
+  1. Descomprimir el zip de entrega en el equipo de la investigadora.
+  2. Tener Python 3, Playwright + Chromium (  python -m playwright install chromium )
+     y PyMuPDF instalados.
+  3. Ejecutar INICIAR.bat  →  abrir http://127.0.0.1:8000
+  4. Usar: buscar titulares, capturar web, descargar ZIP/PDF/CSV.
+
+  Notas:
+   - Expreso: al buscar/capturar se abre una ventana de navegador visible
+     (Cloudflare bloquea headless); se coloca fuera de la pantalla. No cerrarla
+     durante el trabajo.
+   - Trome: sitio reactivado (trome.com responde de nuevo; /edicion_impresa accesible). La busqueda web por adjetivo "rojo" no arrojo titulares en la pasada probada (0 coincidencias); reconectar buscador al retomar.
+   - Criterio actual de la investigadora: solo adjetivo (rojo/roja/…).
+
+REQUIERE
+--------
+- Python 3 (ya instalado en este equipo)
+- Playwright + Chromium (ya instalado) → para las capturas
+- PyMuPDF (ya instalado) → para leer el diario impreso
+
+ESTADO DE LOS 4 MEDIOS (sondeo actualizado: 26/10/2026)
+-----------------------------------------------
+  La República ... búsqueda OK (hasta 2016). Edición impresa: requiere
+                    suscripción (desde S/ 5 al mes).
+  La Razón ....... búsqueda OK. Edición impresa: PDF público (funciona).
+   Trome .......... REACTIVADO (trome.com responde de nuevo; la edicion
+                      impresa /edicion-impresa queda accesible). La busqueda web
+                      por adjetivo "rojo" no arrojo titulares en la pasada
+                      probada (0 coincidencias). Reconexion del buscador al
+                      retomar la captura.
+
+  Expreso ....... ✅ FUNCIONA (integrado en la app).
+                     - Sitio real: www.expreso.com.pe (expreso.pe solo redirige
+                       con HTTPS roto; el verdadero origen es WordPress).
+                     - Cloudflare: bloquea navegadores OCULTOS (headless →
+                       "Attention Required"); una ventana real (headless=False,
+                       visible; se coloca fuera de la pantalla) deja pasar.
+                     - Con la ventana abierta, los datos salen por su API REST
+                       WordPress: /wp-json/wp/v2/posts?search=...&after=...&before=...
+                       (921 noticias con "rojo" en 3 años; 3525 con la raíz "roj";
+                       36 páginas de 100 para el rango completo).
+                     - Búsqueda y capturas integradas y probadas. Los autores NO
+                       se pueden leer desde la API (404).
+
+   → Trome: sitio ya volvió a responder (trome.com). Falta reconectar su
+      buscador para la búsqueda por "rojo" y retomar la captura.
+
+  CRITERIO ACTUALIZADO POR LA INVESTIGADORA (última indicación): la búsqueda
+  se limita a la palabra "rojo" **usada como adjetivo** (incluye variantes
+  roja/rojos/…), descartando coincidencias donde "rojo" aparece como
+  sustantivo o dentro de nombres propios (p. ej. apellidos como "Rojas").
+  El filtro se aplica en la búsqueda web (La República y Expreso) y en el
+  resaltado de capturas.
+
+CONSIDERACIONES ÉTICAS
+----------------------
+- Uso académico, con fines de investigación y citando la fuente.
+- Se recogen únicamente datos públicos (titulares, fechas, URLs).
+- Respeta los términos de uso de cada medio: no reutilizar el contenido
+  completo de las noticias, solo titulares y metadatos con fines de análisis.
+
+ARCHIVOS
+--------
+  app.py ............ servidor y API
+  index.html ........ interfaz web
+  capturas.py ....... módulo de capturas (web + edición impresa)
+  expreso.py ........ módulo de Expreso (ventana visible + API REST WordPress)
+  INICIAR.bat ....... atajo para arrancar
+  LEEME.txt ......... este archivo
+  muestra_rojo_larepublica.csv ... muestra de 120 titulares (últimos 3 años)
+  capturas/ ......... imágenes capturadas (web/ e impresa/) + fichas.json
+  sondeo/ ........... resultados del sondeo y pruebas

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recolector de titulares — estudio del término "rojo"</title>
+<style>
+  :root {
+    --rojo: #b3261e;
+    --rojo-oscuro: #7f1d1d;
+    --fondo: #faf7f5;
+    --texto: #2b2b2b;
+    --gris: #6b6b6b;
+    --borde: #e3ddd8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--fondo);
+    color: var(--texto);
+  }
+  header {
+    background: linear-gradient(135deg, var(--rojo-oscuro), var(--rojo));
+    color: #fff;
+    padding: 28px 24px 22px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 1.5rem; font-weight: 650; }
+  header p { margin: 0; opacity: .92; font-size: .95rem; max-width: 780px; }
+  main { max-width: 1150px; margin: 0 auto; padding: 24px; }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 16px;
+    align-items: end;
+  }
+  label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 5px; color: var(--gris); }
+  input[type=text], input[type=date], select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: .95rem;
+    background: #fff;
+  }
+  .checkbox { display: flex; align-items: center; gap: 8px; font-size: .88rem; margin-top: 4px; }
+  .checkbox input { width: 16px; height: 16px; }
+
+  .acciones { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  button {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 18px;
+    font-size: .95rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn-buscar { background: var(--rojo); color: #fff; }
+  .btn-buscar:hover { background: var(--rojo-oscuro); }
+  .btn-descargar { background: #2b2b2b; color: #fff; }
+  .btn-descargar:disabled { background: #bbb; cursor: not-allowed; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .btn-sec { background: #fff; color: var(--rojo); border: 1.5px solid var(--rojo); }
+  .btn-sec:hover { background: #fff3f2; }
+  .btn-gris { background: #fff; color: #444; border: 1.5px solid var(--borde); }
+  .btn-gris:hover { background: #f3efec; }
+  h2.titulo { margin: 0 0 4px; font-size: 1.1rem; }
+  .nota { font-size: .85rem; color: var(--gris); margin: 0 0 14px; }
+  .contador { font-size: .88rem; color: var(--texto); margin-top: 12px; }
+  .contador b { color: var(--rojo); }
+
+  #estado { margin-top: 12px; font-size: .9rem; color: var(--gris); min-height: 20px; }
+  #estado.error { color: var(--rojo); font-weight: 600; }
+  .barra { height: 6px; background: var(--borde); border-radius: 4px; margin-top: 8px; overflow: hidden; display: none; }
+  .barra > div { height: 100%; width: 0; background: var(--rojo); transition: width .25s; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th { text-align: left; padding: 9px 8px; background: #f3efec; border-bottom: 2px solid var(--borde); position: sticky; top: 0; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  td.titular mark { background: #ffd9d6; padding: 0 2px; border-radius: 2px; }
+  td.bajada { color: var(--gris); max-width: 320px; }
+  a { color: var(--rojo); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .tabla-wrap { max-height: 620px; overflow: auto; }
+  .vacio { padding: 18px; color: var(--gris); text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recolector de titulares — término "rojo"</h1>
+  <p>Herramienta de apoyo para investigación lingüística. Recopila titulares de prensa digital
+     que contienen la palabra buscada y permite descargarlos en CSV (Excel / Atlas.ti / MAXQDA).</p>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="campos">
+      <div>
+        <label for="medio">Medio digital</label>
+        <select id="medio"></select>
+      </div>
+      <div class="nota" id="notaMedio" style="display:none;grid-column:1/-1;color:#6b4a00;background:#fff8e6;border:1px solid #f0ddaa;border-radius:8px;padding:8px 10px;margin-top:4px"></div>
+      <div>
+        <label for="palabra">Palabra a buscar en el titular</label>
+        <input type="text" id="palabra" value="rojo">
+      </div>
+      <div>
+        <label for="desde">Fecha desde</label>
+        <input type="date" id="desde">
+      </div>
+      <div>
+        <label for="hasta">Fecha hasta</label>
+        <input type="date" id="hasta">
+      </div>
+      <div>
+        <label for="paginas">Páginas máx. a recorrer</label>
+        <select id="paginas">
+          <option value="5">5 (≈150 noticias)</option>
+          <option value="10">10 (≈300 noticias)</option>
+          <option value="15" selected>15 (≈450 noticias)</option>
+          <option value="25">25 (≈750 noticias)</option>
+          <option value="40">40 (≈1.200 noticias)</option>
+          <option value="60">60 (≈1.800 noticias)</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="checkbox">
+      <input type="checkbox" id="variantes">
+      Incluir variantes (roja, rojos, rojizo/a, rojismo, rojista…)
+    </label>
+
+    <div class="acciones">
+      <button id="btnBuscar" class="btn-buscar">Buscar titulares</button>
+      <button id="btnDescargar" class="btn-descargar" disabled>Descargar CSV</button>
+    </div>
+    <div id="estado"></div>
+    <div class="barra" id="barra"><div id="barraInt"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:110px">Fecha</th>
+            <th style="width:110px">Sección</th>
+            <th>Titular</th>
+            <th style="width:180px">Medio</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo">
+          <tr><td colspan="4" class="vacio">Aún no se ha realizado ninguna búsqueda.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo">2. Capturas de pantalla</h2>
+    <p class="nota">
+      <b>Web:</b> abre cada noticia y guarda una imagen con el titular tal como aparece en el sitio del periódico.<br>
+      <b>Edición impresa:</b> descarga el PDF del diario en papel de <b>La Razón</b> de cada día del rango de fechas,
+      revisa las páginas (por defecto <b>solo la portada</b>), y guarda la imagen con la palabra
+      <span style="color:#b3261e;font-weight:600">resaltada</span>.
+      El avance se guarda: puedes parar cuando quieras y continuar más tarde sin repetir días.
+    </p>
+
+    <div class="acciones">
+      <button id="btnCapWeb" class="btn-sec">📷 Capturar páginas web</button>
+      <select id="maxWeb" title="Máximo de capturas web" style="width:auto;padding:10px">
+        <option value="25">hasta 25</option>
+        <option value="50" selected>hasta 50</option>
+        <option value="100">hasta 100</option>
+        <option value="200">hasta 200</option>
+      </select>
+    </div>
+
+    <div class="acciones">
+      <button id="btnCapImpresa" class="btn-sec">▶ Procesar tanda (edición impresa)</button>
+      <select id="tipoPaginaImpresa" title="Qué páginas capturar" style="width:auto;padding:10px">
+        <option value="portada" selected>Solo la portada</option>
+        <option value="todas">Todas las páginas con la palabra</option>
+      </select>
+      <select id="diasImpresa" title="Días por tanda" style="width:auto;padding:10px">
+        <option value="15">Tanda de 15 días</option>
+        <option value="30" selected>Tanda de 30 días</option>
+        <option value="60">Tanda de 60 días</option>
+      </select>
+      <label class="checkbox" style="margin:0 0 0 6px">
+        <input type="checkbox" id="autoImpresa"> Continuar hasta terminar el rango
+      </label>
+      <button id="btnReiniciar" class="btn-gris" title="Vuelve a empezar el recorrido de fechas (conserva las imágenes)">Reiniciar avance</button>
+    </div>
+
+    <div class="acciones">
+      <button id="btnZip" class="btn-descargar">⬇ Descargar ZIP (imágenes + fichas.csv)</button>
+      <button id="btnInforme" class="btn-gris">⬇ Descargar informe PDF</button>
+      <button id="btnLimpiar" class="btn-gris">Borrar capturas</button>
+    </div>
+
+    <div class="contador" id="contadorCapturas">Capturas realizadas: <b>0</b></div>
+    <div class="contador" id="avanceImpresa" style="margin-top:4px">Edición impresa: sin procesar</div>
+    <div id="estadoCapturas"></div>
+    <div class="barra" id="barraCap"><div id="barraCapInt"></div></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let items = [];
+let buscando = false;
+
+// Carga los medios disponibles
+(async () => {
+  const r = await fetch('/api/medios');
+  const j = await r.json();
+  const sel = $('medio');
+  const notas = {};
+  j.medios.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.nombre + (m.activo ? '' : ' (próximamente)');
+    opt.disabled = !m.activo;
+    sel.appendChild(opt);
+    notas[m.id] = m.nota || '';
+  });
+  const mostrarNota = () => {
+    const n = notas[sel.value] || '';
+    const el = $('notaMedio');
+    el.textContent = n;
+    el.style.display = n ? 'block' : 'none';
+  };
+  sel.addEventListener('change', mostrarNota);
+  mostrarNota();
+})();
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function resaltar(texto, palabra, variantes) {
+  const patrones = variantes ? 'roj(?:o|a|os|as|ito|ita|itos|itas|izo|iza|ismo|ismos|ista|istas)' : palabra;
+  const re = new RegExp('\\b(' + patrones + ')\\b', 'gi');
+  return escapeHtml(texto).replace(re, (m) => {
+    const c0 = m.charAt(0);
+    if (c0 === c0.toUpperCase() && c0 !== c0.toLowerCase()) return m; // no es adjetivo (sustantivo/nombre)
+    return '<mark>' + m + '</mark>';
+  });
+}
+
+function render() {
+  const cuerpo = $('cuerpo');
+  if (!items.length) {
+    cuerpo.innerHTML = '<tr><td colspan="4" class="vacio">Sin resultados con los filtros actuales.</td></tr>';
+    return;
+  }
+  const palabra = $('palabra').value.trim();
+  const variantes = $('variantes').checked;
+  cuerpo.innerHTML = items.map(f => `
+    <tr>
+      <td>${escapeHtml(f.fecha)}</td>
+      <td>${escapeHtml(f.seccion)}</td>
+      <td class="titular">${resaltar(f.titular, palabra, variantes)}
+        <div class="bajada">${escapeHtml(f.bajada)}</div>
+        <a href="${escapeHtml(f.url)}" target="_blank" rel="noopener">${escapeHtml(f.url)}</a>
+      </td>
+      <td>${escapeHtml(f.medio)}<br><span style="color:#6b6b6b">${escapeHtml(f.autor)}</span></td>
+    </tr>`).join('');
+}
+
+function estado(texto, error = false) {
+  const e = $('estado');
+  e.textContent = texto;
+  e.className = error ? 'error' : '';
+}
+
+$('btnBuscar').addEventListener('click', async () => {
+  if (buscando) return;
+  const palabra = $('palabra').value.trim();
+  if (!palabra) { estado('Escribe la palabra que quieres buscar.', true); return; }
+
+  buscando = true;
+  items = [];
+  $('btnBuscar').disabled = true;
+  $('btnDescargar').disabled = true;
+  $('barra').style.display = 'block';
+
+  const params = new URLSearchParams({
+    medio: $('medio').value,
+    palabra: palabra,
+    variantes: $('variantes').checked ? '1' : '0',
+    desde: $('desde').value,
+    hasta: $('hasta').value,
+  });
+  let maxPaginas = parseInt($('paginas').value, 10);
+  let mensaje = '';
+
+  for (let p = 1; p <= maxPaginas; p++) {
+    params.set('pagina', p);
+    estado(`Consultando página ${p} de hasta ${maxPaginas}… (${items.length} titulares encontrados)`);
+    $('barraInt').style.width = Math.round((p / maxPaginas) * 100) + '%';
+
+    let j;
+    try {
+      const r = await fetch('/api/pagina?' + params.toString());
+      j = await r.json();
+    } catch (err) {
+      mensaje = 'Error de conexión: ' + err.message;
+      break;
+    }
+    if (!j.ok) { mensaje = j.error || 'Error desconocido.'; break; }
+    if (j.paginas_totales && j.paginas_totales > maxPaginas) {
+      maxPaginas = j.paginas_totales;   // Expreso: el tope crece hasta el total real
+    }
+
+    const antes = items.length;
+    items = items.concat(j.items);
+    render();
+
+    if (j.fin) {
+      mensaje = j.motivo === 'fuera_de_rango'
+        ? 'Se alcanzó la fecha inicial solicitada.'
+        : 'El medio no tiene más resultados.';
+      break;
+    }
+    if (items.length === antes) { /* sigue buscando: la página no tenía títulos con la palabra */ }
+  }
+
+  $('barraInt').style.width = '100%';
+  estado(`${items.length} titulares encontrados. ${mensaje}`.trim(), !!mensaje && items.length === 0);
+  $('btnBuscar').disabled = false;
+  $('btnDescargar').disabled = items.length === 0;
+  buscando = false;
+  setTimeout(() => { $('barra').style.display = 'none'; $('barraInt').style.width = '0'; }, 600);
+});
+
+$('btnDescargar').addEventListener('click', async () => {
+  const fecha = new Date().toISOString().slice(0, 10);
+  const nombre = `titulares_${$('palabra').value.trim()}_${$('medio').value}_${fecha}`;
+  const r = await fetch('/api/csv', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items, nombre }),
+  });
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// =========================================================================
+// 2) CAPTURAS
+// =========================================================================
+function estadoCap(texto, error = false) {
+  const e = document.getElementById('estadoCapturas');
+  e.textContent = texto;
+  e.className = error ? 'error' : '';
+}
+function barraCap(pct) {
+  const b = document.getElementById('barraCap');
+  b.style.display = pct === null ? 'none' : 'block';
+  if (pct !== null) document.getElementById('barraCapInt').style.width = pct + '%';
+}
+async function refrescarContador() {
+  try {
+    const r = await fetch('/api/fichas');
+    const j = await r.json();
+    const n = (j.capturas || []).length;
+    document.getElementById('contadorCapturas').innerHTML =
+      `Capturas realizadas: <b>${n}</b>`;
+    return n;
+  } catch (e) { return 0; }
+}
+const dormir = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function mandar(url, cuerpo, intentos = 2) {
+  // Reintenta si el servidor indica que hay otra captura en curso
+  for (let i = 0; i <= intentos; i++) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+    });
+    const j = await r.json().catch(() => ({ ok: false, error: 'Respuesta ilegible.' }));
+    if (j.ok) return j;
+    if (/en curso/i.test(j.error || '') && i < intentos) { await dormir(4000); continue; }
+    throw new Error(j.error || 'Error del servidor.');
+  }
+  throw new Error('No se pudo completar.');
+}
+
+// --- Captura web ---------------------------------------------------------
+document.getElementById('btnCapWeb').addEventListener('click', async () => {
+  if (!items.length) { estadoCap('Primero haz una búsqueda de titulares.', true); return; }
+  const limite = parseInt(document.getElementById('maxWeb').value, 10) || 50;
+  const lote = items.slice(0, limite);
+  const btn = document.getElementById('btnCapWeb');
+  btn.disabled = true;
+  barraCap(0);
+  let hechas = 0, fallos = 0;
+  const TAM = 4;
+
+  for (let i = 0; i < lote.length; i += TAM) {
+    const lote2 = lote.slice(i, i + TAM);
+    estadoCap(`Capturando página web ${i + 1}–${i + lote2.length} de ${lote.length}…`);
+    barraCap(Math.round((i / lote.length) * 100));
+    try {
+      const j = await mandar('/api/capturar-web',
+        { items: lote2, palabra: $('palabra').value.trim() });
+      hechas += j.capturas.length;
+      fallos += j.errores.length;
+      await refrescarContador();
+    } catch (e) {
+      estadoCap('Se detuvo: ' + e.message, true);
+      break;
+    }
+  }
+  barraCap(100);
+  estadoCap(`Capturas web: ${hechas} guardadas${fallos ? `, ${fallos} con error` : ''}.`);
+  await refrescarContador();
+  btn.disabled = false;
+  setTimeout(() => barraCap(null), 800);
+});
+
+// --- Captura de la edición impresa (tandas con retomada) -----------------
+function formatoFecha(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function pintarAvance(a) {
+  const el = document.getElementById('avanceImpresa');
+  if (!a || !a.total) { el.innerHTML = 'Edición impresa: <b>elige fechas para empezar</b>'; return; }
+  el.innerHTML =
+    `Edición impresa: revisados <b>${a.hechas}</b> de <b>${a.total}</b> días · ` +
+    `capturas: <b>${a.capturadas}</b> · próxima fecha: <b>${a.proxima || 'terminado'}</b>`;
+}
+
+async function cargarAvance() {
+  try {
+    const modo = $('tipoPaginaImpresa').value === 'portada' ? 'portada' : 'todas';
+    const r = await fetch(`/api/avance-impresa?desde=${$('desde').value}&hasta=${$('hasta').value}&modo=${modo}`);
+    const j = await r.json();
+    pintarAvance(j.avance);
+    return j.avance;
+  } catch (e) { return null; }
+}
+
+document.getElementById('tipoPaginaImpresa').addEventListener('change', cargarAvance);
+document.getElementById('desde').addEventListener('change', cargarAvance);
+document.getElementById('hasta').addEventListener('change', cargarAvance);
+
+document.getElementById('btnCapImpresa').addEventListener('click', () => procesarImpresa(false));
+
+document.getElementById('btnReiniciar').addEventListener('click', async () => {
+  if (!confirm('¿Volver a empezar el recorrido de fechas del rango? Se conservan las imágenes ya capturadas.')) return;
+  await fetch('/api/reiniciar-avance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  estadoCap('Avance reiniciado: se revisarán todas las fechas del rango desde el principio.');
+  await cargarAvance();
+});
+
+async function procesarImpresa(automatica) {
+  const btn = document.getElementById('btnCapImpresa');
+  const auto = automatica || document.getElementById('autoImpresa').checked;
+  if (!$('desde').value || !$('hasta').value) { estadoCap('Elige las fechas desde/hasta.', true); return; }
+  btn.disabled = true;
+  let totalCapturas = 0, totalAvisos = 0, hechasAntes = -1, estancados = 0;
+
+  try {
+    while (true) {
+      estadoCap('Procesando tanda de la edición impresa…');
+      const j = await mandar('/api/capturar-impresa-tanda', {
+        desde: $('desde').value,
+        hasta: $('hasta').value,
+        dias: parseInt($('diasImpresa').value, 10),
+        palabra: $('palabra').value.trim(),
+        variantes: $('variantes').checked,
+        solo_portada: $('tipoPaginaImpresa').value === 'portada',
+      });
+      totalCapturas += j.capturas.length;
+      totalAvisos += j.errores.length;
+      const a = j.avance || {};
+      pintarAvance(a);
+      barraCap(a.total ? Math.round((a.hechas / a.total) * 100) : 100);
+      await refrescarContador();
+
+      if (!auto || !a.restantes) {
+        estadoCap(`Tanda completada: +${totalCapturas} capturas` +
+                  `${totalAvisos ? ` (${totalAvisos} días sin la palabra o sin edición)` : ''}` +
+                  (a.restantes ? ` · quedan ${a.restantes} días por revisar.` : ' · rango terminado.'));
+        break;
+      }
+      // Red de seguridad: si dos tandas seguidas no avanzan, paramos
+      if (a.hechas === hechasAntes) estancados++; else estancados = 0;
+      hechasAntes = a.hechas;
+      if (estancados >= 2) {
+        estadoCap('Se detuvo: no se pudo avanzar (¿conexión interrumpida?). Pulsa de nuevo para reintentar.', true);
+        break;
+      }
+      await dormir(400);
+    }
+  } catch (e) {
+    estadoCap('Se detuvo: ' + e.message, true);
+  }
+  await cargarAvance();
+  btn.disabled = false;
+  setTimeout(() => barraCap(null), 1200);
+}
+
+// --- Descargas -----------------------------------------------------------
+document.getElementById('btnZip').addEventListener('click', async () => {
+  const n = await refrescarContador();
+  if (!n) { estadoCap('Todavía no hay capturas que descargar.', true); return; }
+  window.location.href = '/api/zip';
+});
+
+document.getElementById('btnInforme').addEventListener('click', async () => {
+  const n = await refrescarContador();
+  if (!n) { estadoCap('Todavía no hay capturas para el informe.', true); return; }
+  estadoCap('Generando el informe PDF…');
+  try {
+    const r = await fetch('/api/informe-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'Error'); }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'informe_capturas.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    estadoCap('Informe PDF descargado.');
+  } catch (e) {
+    estadoCap('No se pudo generar: ' + e.message, true);
+  }
+});
+
+document.getElementById('btnLimpiar').addEventListener('click', async () => {
+  if (!confirm('¿Borrar todas las capturas guardadas?')) return;
+  try {
+    const r = await fetch('/api/limpiar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    estadoCap(`Se eliminaron ${j.eliminados} archivos.`);
+    await refrescarContador();
+  } catch (e) {
+    estadoCap('No se pudo borrar: ' + e.message, true);
+  }
+});
+
+// --- Inicio: rango por defecto de 3 años --------------------------------
+if (!$('desde').value) {
+  const hoy = new Date();
+  const inicio = new Date(hoy);
+  inicio.setFullYear(hoy.getFullYear() - 3);
+  $('desde').value = formatoFecha(inicio);
+}
+if (!$('hasta').value) $('hasta').value = formatoFecha(new Date());
+
+cargarAvance();
+refrescarContador();
+</script>
+</body>
+</html>
