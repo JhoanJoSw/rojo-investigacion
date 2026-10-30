@@ -203,6 +203,11 @@
     </div>
 
     <div class="acciones">
+      <button id="btnCapImpresaLR" class="btn-sec">▶ Procesar tanda (edición impresa – La República)</button>
+      <span class="nota" style="align-self:center">Con credenciales (suscripción S/5) · captura de portada por fecha</span>
+    </div>
+
+    <div class="acciones">
       <button id="btnZip" class="btn-descargar">⬇ Descargar ZIP (imágenes + fichas.csv)</button>
       <button id="btnInforme" class="btn-gris">⬇ Descargar informe PDF</button>
       <button id="btnLimpiar" class="btn-gris">Borrar capturas</button>
@@ -463,6 +468,8 @@ document.getElementById('hasta').addEventListener('change', cargarAvance);
 
 document.getElementById('btnCapImpresa').addEventListener('click', () => procesarImpresa(false));
 
+document.getElementById('btnCapImpresaLR').addEventListener('click', () => procesarImpresaLR(false));
+
 document.getElementById('btnReiniciar').addEventListener('click', async () => {
   if (!confirm('¿Volver a empezar el recorrido de fechas del rango? Se conservan las imágenes ya capturadas.')) return;
   await fetch('/api/reiniciar-avance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
@@ -502,6 +509,53 @@ async function procesarImpresa(automatica) {
         break;
       }
       // Red de seguridad: si dos tandas seguidas no avanzan, paramos
+      if (a.hechas === hechasAntes) estancados++; else estancados = 0;
+      hechasAntes = a.hechas;
+      if (estancados >= 2) {
+        estadoCap('Se detuvo: no se pudo avanzar (¿conexión interrumpida?). Pulsa de nuevo para reintentar.', true);
+        break;
+      }
+      await dormir(400);
+    }
+  } catch (e) {
+    estadoCap('Se detuvo: ' + e.message, true);
+  }
+  await cargarAvance();
+  btn.disabled = false;
+  setTimeout(() => barraCap(null), 1200);
+}
+
+async function procesarImpresaLR(automatica) {
+  const btn = document.getElementById('btnCapImpresaLR');
+  const auto = automatica || document.getElementById('autoImpresa').checked;
+  if (!$('desde').value || !$('hasta').value) { estadoCap('Elige las fechas desde/hasta.', true); return; }
+  btn.disabled = true;
+  let totalCapturas = 0, totalAvisos = 0, hechasAntes = -1, estancados = 0;
+
+  try {
+    while (true) {
+      estadoCap('Procesando tanda de la edicion impresa (La Republica)...');
+      const j = await mandar('/api/capturar-impresa-larepublica-tanda', {
+        desde: $('desde').value,
+        hasta: $('hasta').value,
+        dias: parseInt($('diasImpresa').value, 10),
+        palabra: $('palabra').value.trim(),
+        variantes: $('variantes').checked,
+        solo_portada: $('tipoPaginaImpresa').value === 'portada',
+      });
+      totalCapturas += j.capturas.length;
+      totalAvisos += j.errores.length;
+      const a = j.avance || {};
+      pintarAvance(a);
+      barraCap(a.total ? Math.round((a.hechas / a.total) * 100) : 100);
+      await refrescarContador();
+
+      if (!auto || !a.restantes) {
+        estadoCap(`Tanda completada (La Republica): +${totalCapturas} capturas` +
+                  `${totalAvisos ? ` (${totalAvisos} dias sin la palabra o sin edicion)` : ''}` +
+                  (a.restantes ? ` · quedan ${a.restantes} dias por revisar.` : ' · rango terminado.'));
+        break;
+      }
       if (a.hechas === hechasAntes) estancados++; else estancados = 0;
       hechasAntes = a.hechas;
       if (estancados >= 2) {

@@ -28,6 +28,12 @@ contienen la palabra "rojo" (y sus variantes), y capturarlos como imagen:
      - Modo por defecto: SOLO LA PORTADA (página 1). También se puede
        elegir "Todas las páginas con la palabra" (al cambiar de modo se
        repasan los días que falten en el nuevo modo).
+      - La edición impresa de LA REPÚBLICA también se puede lanzar desde el
+        botón "▶ Procesar tanda (edición impresa – La República)": abre la web
+        (impreso.larepublica.pe) con Playwright visible, inicia sesión con las
+        credenciales de la suscripción (S/5) y captura la portada de cada fecha del
+        rango elegido. Misma tanda ("Continuar hasta terminar el rango") y retomada
+        por fecha.
 
   4. ENTREGA
      - ZIP con todas las imágenes + fichas.csv
@@ -45,6 +51,9 @@ CÓMO SE USA
    - "▶ Procesar tanda (edición impresa)" → elige "Solo la portada"
      o "Todas las páginas", tamaño de tanda y, si quieres que trabaje
      solo, marca "Continuar hasta terminar el rango".
+   - "▶ Procesar tanda (edición impresa – La República)" → lanza la captura de
+     la edición impresa de LA REPÚBLICA con credenciales (suscripción S/5). Con la
+     ventana visible (Playwright headed). Misma tanda/retomada.
      La línea "Edición impresa: revisados X de Y días" muestra el avance;
      puedes parar o cerrar la página cuando quieras: al volver a pulsar,
      CONTINÚA donde quedó sin repetir días ("Reiniciar avance" solo sirve

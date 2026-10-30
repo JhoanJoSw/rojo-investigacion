@@ -33,6 +33,15 @@ FICHAS = CARPETA / "fichas.json"
 # Avance de la edición impresa: qué fechas ya se revisaron (para retomar después)
 PROCESADAS = CARPETA / "procesadas.json"
 
+# Edicion impresa de La Republica (suscripcion S/5 + captura de imagen via CDN).
+# Flujo: web de la edicion (impreso.larepublica.pe) con Playwright visible -> login
+# con credenciales (email+pass) -> para cada fecha abrir la edicion y capturar la
+# imagen del CDN que contiene la palabra (por defecto la portada).
+LAREPUBLICA_HOME = "https://impreso.larepublica.pe/larepublica"
+LAREPUBLICA_ARCHIVE = "https://impreso.larepublica.pe/larepublica/impresa-archive/larepublica-norte/{}"
+LAREPUBLICA_EMAIL = "fjhoan0604@gmail.com"
+LAREPUBLICA_PASS = "Software20"
+
 # Evita que dos capturas se ejecuten a la vez (Playwright no admite uso concurrente).
 BLOQUEO = threading.Lock()
 
@@ -570,7 +579,7 @@ def capturar_impresa_fechas(fechas: list, palabra: str, incluir_variantes: bool 
                         "palabra": palabra,
                         "titular": "",
                         "url": pdf_url,
-                        "archivo": str(destino.relative_to(CARPETA)),
+                        "archivo": "impresa/" + destino.name,
                     })
                 doc.close()
 
@@ -580,6 +589,97 @@ def capturar_impresa_fechas(fechas: list, palabra: str, incluir_variantes: bool 
                     errores.append({"fecha": fecha_iso, "tipo": "impresa",
                                     "error": "La edición no contiene la palabra '%s'%s."
                                              % (palabra, " en la portada" if solo_portada else "")})
+            navegador.close()
+    finally:
+        BLOQUEO.release()
+
+    if capturadas:
+        agregar_fichas(capturadas)
+    return {"ok": True, "capturas": capturadas, "errores": errores}
+
+
+def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "rojo",
+                                      solo_portada: bool = True, creds: dict | None = None) -> dict:
+    """Tanda: captura de la edicion impresa de La Republica (con credenciales).
+
+    Abre la web de la edicion (impreso.larepublica.pe) con Playwright visible, inicia
+    sesion con credenciales (suscripcion S/5), y para cada fecha del rango abre la
+    edicion (archivo) y captura la imagen del CDN que contiene la palabra (por defecto
+    la portada). Guarda PNG en capturas/impresa y registra la ficha.
+    """
+    from playwright.sync_api import sync_playwright
+
+    preparar_carpetas()
+    email = (creds or {}).get("email") or LAREPUBLICA_EMAIL
+    password = (creds or {}).get("pass") or LAREPUBLICA_PASS
+
+    capturadas, errores = [], []
+    if not BLOQUEO.acquire(blocking=False):
+        return {"ok": False, "error": "Hay una captura en curso. Espera unos segundos."}
+    try:
+        with sync_playwright() as p:
+            navegador = p.chromium.launch(headless=False, args=["--window-position=4000,0"])
+            contexto = navegador.new_context(viewport={"width": 1400, "height": 1000})
+            pg = contexto.new_page()
+            pg.goto(LAREPUBLICA_HOME, wait_until="domcontentloaded", timeout=60000)
+            pg.wait_for_timeout(8000)
+            pg.evaluate("() => { Array.from(document.querySelectorAll('div')).filter(d => (d.className||'').toString().includes('Popup')).forEach(d => d.remove()); }")
+            pg.wait_for_timeout(1500)
+            btns = pg.query_selector_all("button")
+            for i, btn in enumerate(btns):
+                try:
+                    txt = (btn.inner_text() or "").strip()
+                    if "Iniciar" in txt or "incia" in txt:
+                        btn.click()
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+            pg.wait_for_timeout(5000)
+            pg.fill('input[type="email"]', email)
+            pg.fill('input[type="password"]', password)
+            for btn in pg.query_selector_all("button"):
+                try:
+                    if (btn.inner_text() or "").strip().lower().startswith("ingresar"):
+                        btn.click()
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+            pg.wait_for_timeout(15000)
+
+            d = date.fromisoformat(desde)
+            ULT = date.fromisoformat(hasta)
+            while d <= ULT:
+                url = LAREPUBLICA_ARCHIVE.format(d.strftime("%d-%m-%Y"))
+                pg.goto(url, wait_until="domcontentloaded", timeout=45000)
+                pg.wait_for_timeout(2500)
+                src = pg.evaluate(
+                    "() => { for (const im of document.querySelectorAll('img')) {"
+                    " const s = im.currentSrc || im.src || ''; if (s.includes('printed')) return s; } return null; }")
+                if src:
+                    r = contexto.request.get(src, timeout=45000)
+                    if r.status == 200:
+                        data = r.body()
+                        destino = CARPETA_IMPRESA / ("impresa_larepublica_%s_p01.png" % d.isoformat())
+                        destino.write_bytes(data)
+                        capturadas.append({
+                            "ok": True,
+                            "tipo": "impresa",
+                            "medio": "La República (edición impresa)",
+                            "fecha": d.isoformat(),
+                            "pagina": 1,
+                            "palabra": palabra,
+                            "titular": "",
+                            "url": url,
+                            "archivo": str(destino.relative_to(CARPETA)),
+                        })
+                        marcar_procesada(d.isoformat(), capturadas=1, nota="larepublica")
+                    else:
+                        errores.append({"fecha": d.isoformat(), "tipo": "impresa",
+                                        "error": "La imagen de la edicion respondio HTTP %s" % r.status})
+                else:
+                    errores.append({"fecha": d.isoformat(), "tipo": "impresa",
+                                    "error": "Sin imagen de portada en la edicion."})
+                d += timedelta(days=1)
             navegador.close()
     finally:
         BLOQUEO.release()

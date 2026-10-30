@@ -428,6 +428,27 @@ class Handler(BaseHTTPRequestHandler):
                 resultado["avance"] = capturas.estado_impresa(desde, hasta, modo)
             return self._json(resultado, status=200 if resultado.get("ok") else 500)
 
+        # ---- Capturas de la edición impresa de La República (con credenciales) — tanda
+        if ruta == "/api/capturar-impresa-larepublica-tanda":
+            desde = (datos.get("desde") or "").strip()
+            hasta = (datos.get("hasta") or "").strip()
+            palabra = (datos.get("palabra") or "rojo").strip()
+            solo_portada = bool(datos.get("solo_portada", True))
+            try:
+                dias = max(1, min(90, int(datos.get("dias") or 30)))
+            except (TypeError, ValueError):
+                dias = 30
+            if not desde or not hasta:
+                return self._json({"ok": False, "error": "Faltan las fechas desde/hasta."}, status=400)
+            try:
+                resultado = capturas.capturar_impresa_larepublica_tanda(
+                    desde, hasta, palabra, solo_portada)
+            except Exception as exc:  # noqa: BLE001
+                resultado = {"ok": False, "error": "Fallo en la captura: %s" % exc}
+            if resultado.get("ok"):
+                resultado["avance"] = capturas.estado_impresa(desde, hasta, "portada" if solo_portada else "todas")
+            return self._json(resultado, status=200 if resultado.get("ok") else 500)
+
         # ---- Capturas de la edición impresa (La Razón) — lote fijo (antiguo)
         if ruta == "/api/capturar-impresa":
             fechas = datos.get("fechas") or []
