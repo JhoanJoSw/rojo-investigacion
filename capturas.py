@@ -41,6 +41,7 @@ LAREPUBLICA_HOME = "https://impreso.larepublica.pe/larepublica"
 LAREPUBLICA_ARCHIVE = "https://impreso.larepublica.pe/larepublica/impresa-archive/larepublica-norte/{}"
 LAREPUBLICA_EMAIL = "fjhoan0604@gmail.com"
 LAREPUBLICA_PASS = "Software20"
+_LECTOR_OCR = None
 
 # Evita que dos capturas se ejecuten a la vez (Playwright no admite uso concurrente).
 BLOQUEO = threading.Lock()
@@ -598,6 +599,38 @@ def capturar_impresa_fechas(fechas: list, palabra: str, incluir_variantes: bool 
     return {"ok": True, "capturas": capturadas, "errores": errores}
 
 
+def _marcar_imagen_palabra(ruta_imagen, patron=None) -> dict | None:
+    """Busca la palabra (rojo/roja/rojos/...) en la imagen con OCR y dibuja recuadro rojo."""
+    import re as _re
+    from PIL import Image, ImageDraw
+    global _LECTOR_OCR
+    if _LECTOR_OCR is None:
+        import easyocr
+        _LECTOR_OCR = easyocr.Reader(["es"], gpu=False, verbose=False)
+    img = Image.open(ruta_imagen).convert("RGB")
+    res = _LECTOR_OCR.readtext(str(ruta_imagen), detail=1)
+    patron_comp = _re.compile(patron or r"roj(?:o|a|os|as|ito|ita|itos|itas|izo|iza|ismo|ismos|ista|istas)", _re.IGNORECASE)
+    hit = None
+    for item in res:
+        try:
+            b, txt, conf = item[0], item[1], item[2]
+            tok = (txt or "").strip()
+            if patron_comp.fullmatch(tok):
+                hit = (b, tok, float(conf))
+                break
+        except Exception:  # noqa: BLE001
+            continue
+    if not hit:
+        return None
+    b, tok, conf = hit
+    x1, y1 = float(b[0][0]), float(b[0][1])
+    x2, y2 = float(b[2][0]), float(b[2][1])
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([x1, y1, x2, y2], fill=(255, 220, 220), outline=(255, 0, 0), width=4)
+    img.save(str(ruta_imagen))
+    return {"ok": True, "palabra": tok, "conf": float(conf)}
+
+
 def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "rojo",
                                       solo_portada: bool = True, creds: dict | None = None,
                                       dias: int = 0, fechas: list | None = None) -> dict:
@@ -663,6 +696,7 @@ def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "r
                         data = r.body()
                         destino = CARPETA_IMPRESA / ("impresa_larepublica_%s_p01.png" % d.isoformat())
                         destino.write_bytes(data)
+                        marc = _marcar_imagen_palabra(destino)
                         capturadas.append({
                             "ok": True,
                             "tipo": "impresa",
