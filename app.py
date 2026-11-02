@@ -441,8 +441,10 @@ class Handler(BaseHTTPRequestHandler):
             if not desde or not hasta:
                 return self._json({"ok": False, "error": "Faltan las fechas desde/hasta."}, status=400)
             try:
+                modo = "portada" if solo_portada else "todas"
+                pendientes = capturas.fechas_pendientes(desde, hasta, dias, modo)
                 resultado = capturas.capturar_impresa_larepublica_tanda(
-                    desde, hasta, palabra, solo_portada)
+                    desde, hasta, palabra, solo_portada, dias=dias, fechas=pendientes)
             except Exception as exc:  # noqa: BLE001
                 resultado = {"ok": False, "error": "Fallo en la captura: %s" % exc}
             if resultado.get("ok"):

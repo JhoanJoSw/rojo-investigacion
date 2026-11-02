@@ -599,7 +599,8 @@ def capturar_impresa_fechas(fechas: list, palabra: str, incluir_variantes: bool 
 
 
 def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "rojo",
-                                      solo_portada: bool = True, creds: dict | None = None) -> dict:
+                                      solo_portada: bool = True, creds: dict | None = None,
+                                      dias: int = 0, fechas: list | None = None) -> dict:
     """Tanda: captura de la edicion impresa de La Republica (con credenciales).
 
     Abre la web de la edicion (impreso.larepublica.pe) con Playwright visible, inicia
@@ -646,9 +647,10 @@ def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "r
                     pass
             pg.wait_for_timeout(15000)
 
-            d = date.fromisoformat(desde)
-            ULT = date.fromisoformat(hasta)
-            while d <= ULT:
+            modo = "portada" if solo_portada else "todas"
+            fechas_a_procesar = fechas if fechas is not None else fechas_pendientes(desde, hasta, dias, modo)
+            for f in fechas_a_procesar:
+                d = date.fromisoformat(f)
                 url = LAREPUBLICA_ARCHIVE.format(d.strftime("%d-%m-%Y"))
                 pg.goto(url, wait_until="domcontentloaded", timeout=45000)
                 pg.wait_for_timeout(2500)
@@ -679,7 +681,6 @@ def capturar_impresa_larepublica_tanda(desde: str, hasta: str, palabra: str = "r
                 else:
                     errores.append({"fecha": d.isoformat(), "tipo": "impresa",
                                     "error": "Sin imagen de portada en la edicion."})
-                d += timedelta(days=1)
             navegador.close()
     finally:
         BLOQUEO.release()
